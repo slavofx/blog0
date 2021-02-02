@@ -60,7 +60,8 @@
 								</p>
 								<p>
 									<span class="xhx" id="tuanname1"></span>
-									&nbsp，我完成了学生团员“寒假十课”第<span id="tuanclasses"></span>课！
+									<span>&nbsp，我完成了学生团员“寒假十课”第</span>
+									<span id="tuanclasses"></span>
 								</p>
 							</div>
 							<div class="d hzP">
@@ -125,7 +126,7 @@
 		$('#tuanname').html(name.substring(0,4));
 		$('#tuanname1').html(name.substring(4));
 
-		$("#tuanclasses").html(numtocnnum(courseId));
+		$("#tuanclasses").html(numtocnnum(courseId)+'课！');
 		$('#tuanHZ').attr('src', `images/bg_hz${courseId}.png`);
 
 		setTimeout(function () {
