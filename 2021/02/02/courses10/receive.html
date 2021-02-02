@@ -60,6 +60,7 @@
 								</p>
 								<p>
 									<span class="xhx" id="tuanname1"></span>
+									&nbsp，我完成了学生团员“寒假十课”
 									<span id="tuanclasses"></span>
 								</p>
 							</div>
@@ -124,8 +125,8 @@
 	function renderHtml(name) {
 		$('#tuanname').html(name.substring(0,4));
 		$('#tuanname1').html(name.substring(4));
-
-		$("#tuanclasses").html('&nbsp，我完成了学生团员“寒假十课”第'+numtocnnum(courseId)+'课！');
+		
+		$("#tuanclasses").html('第'+numtocnnum(courseId)+'课！');
 		$('#tuanHZ').attr('src', `images/bg_hz${courseId}.png`);
 
 		setTimeout(function () {
