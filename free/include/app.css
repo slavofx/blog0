@@ -6,9 +6,10 @@
  * @version 2016-07-22 17:18:59
  */
 
-body, .skin-green .wrapper, .skin-green .main-sidebar, .skin-green .left-side {
+/* body, .skin-green .wrapper, .skin-green .main-sidebar, .skin-green .left-side {
 	background:#fff url(../images/bg_white.png);
-}
+} */
+
 body {
 	overflow-x: auto;
 }
@@ -40,7 +41,7 @@ a:hover {color: #b80000; cursor: pointer;}
 .fixed .main-sidebar, .fixed .left-side,.fixed .sidebar-menu>li.header ,
 .fixed .sidebar a,
 .fixed .treeview-menu>li>a {
-	background: url(../images/bg_black.png);
+	/* background: url(../images/bg_black.png); */
 	color: #fff;
 }
 
