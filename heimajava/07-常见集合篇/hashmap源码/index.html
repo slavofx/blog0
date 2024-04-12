@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../../../img/favicon.ico">
+        <title>HashMap源码 - XM Docs</title>
+        <link href="../../../css/bootstrap.min.css" rel="stylesheet">
+        <link href="../../../css/font-awesome.min.css" rel="stylesheet">
+        <link href="../../../css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+        <script>hljs.highlightAll();</script> 
+    </head>
+
+    <body>
+        <div class="navbar fixed-top navbar-expand-lg navbar-dark bg-primary">
+            <div class="container">
+                <a class="navbar-brand" href="../../..">XM Docs</a>
+                <!-- Expander button -->
+                <button type="button" class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Expanded navigation -->
+                <div id="navbar-collapse" class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li class="navitem">
+                                <a href="../../.." class="nav-link">Home</a>
+                            </li>
+                            <li class="navitem">
+                                <a href="../../" class="nav-link">黑马Java</a>
+                            </li>
+                            <li class="dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">Redis <b class="caret"></b></a>
+                                <ul class="dropdown-menu">
+                                    
+<li>
+    <a href="../../../redis/redis-langfei/" class="dropdown-item">redis-浪飞yes</a>
+</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item">
+                            <a href="#" class="nav-link" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+                    <div class="col-md-3"><div class="navbar-light navbar-expand-md bs-sidebar hidden-print affix" role="complementary">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggler collapsed" data-toggle="collapse" data-target="#toc-collapse" title="Table of Contents">
+            <span class="fa fa-angle-down"></span>
+        </button>
+    </div>
+
+    
+    <div id="toc-collapse" class="navbar-collapse collapse card bg-secondary">
+        <ul class="nav flex-column">
+            
+            <li class="nav-item" data-level="1"><a href="#hashmap" class="nav-link">HashMap源码</a>
+              <ul class="nav flex-column">
+              </ul>
+            </li>
+        </ul>
+    </div>
+</div></div>
+                    <div class="col-md-9" role="main">
+
+<h1 id="hashmap">HashMap源码</h1>
+<h3 id="1-put">1 put方法流程</h3>
+<pre><code class="language-java">public V put(K key, V value) {
+    return putVal(hash(key), key, value, false, true);
+}
+
+final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
+                   boolean evict) {
+    Node&lt;K,V&gt;[] tab; Node&lt;K,V&gt; p; int n, i;
+    //判断数组是否未初始化
+    if ((tab = table) == null || (n = tab.length) == 0)
+        //如果未初始化，调用resize方法 进行初始化
+        n = (tab = resize()).length;
+    //通过 &amp; 运算求出该数据（key）的数组下标并判断该下标位置是否有数据
+    if ((p = tab[i = (n - 1) &amp; hash]) == null)
+        //如果没有，直接将数据放在该下标位置
+        tab[i] = newNode(hash, key, value, null);
+    //该数组下标有数据的情况
+    else {
+        Node&lt;K,V&gt; e; K k;
+        //判断该位置数据的key和新来的数据是否一样
+        if (p.hash == hash &amp;&amp;
+            ((k = p.key) == key || (key != null &amp;&amp; key.equals(k))))
+            //如果一样，证明为修改操作，该节点的数据赋值给e,后边会用到
+            e = p;
+        //判断是不是红黑树
+        else if (p instanceof TreeNode)
+            //如果是红黑树的话，进行红黑树的操作
+            e = ((TreeNode&lt;K,V&gt;)p).putTreeVal(this, tab, hash, key, value);
+        //新数据和当前数组既不相同，也不是红黑树节点，证明是链表
+        else {
+            //遍历链表
+            for (int binCount = 0; ; ++binCount) {
+                //判断next节点，如果为空的话，证明遍历到链表尾部了
+                if ((e = p.next) == null) {
+                    //把新值放入链表尾部
+                    p.next = newNode(hash, key, value, null);
+                    //因为新插入了一条数据，所以判断链表长度是不是大于等于8
+                    if (binCount &gt;= TREEIFY_THRESHOLD - 1) // -1 for 1st
+                        //如果是，进行转换红黑树操作
+                        treeifyBin(tab, hash);
+                    break;
+                }
+                //判断链表当中有数据相同的值，如果一样，证明为修改操作
+                if (e.hash == hash &amp;&amp;
+                    ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))
+                    break;
+                //把下一个节点赋值为当前节点
+                p = e;
+            }
+        }
+        //判断e是否为空（e值为修改操作存放原数据的变量）
+        if (e != null) { // existing mapping for key
+            //不为空的话证明是修改操作，取出老值
+            V oldValue = e.value;
+            //一定会执行  onlyIfAbsent传进来的是false
+            if (!onlyIfAbsent || oldValue == null)
+                //将新值赋值当前节点
+                e.value = value;
+            afterNodeAccess(e);
+            //返回老值
+            return oldValue;
+        }
+    }
+    //计数器，计算当前节点的修改次数
+    ++modCount;
+    //当前数组中的数据数量如果大于扩容阈值
+    if (++size &gt; threshold)
+        //进行扩容操作
+        resize();
+    //空方法
+    afterNodeInsertion(evict);
+    //添加操作时 返回空值
+    return null;
+}
+</code></pre>
+<h3 id="2">2 扩容</h3>
+<pre><code class="language-java">//扩容、初始化数组
+final Node&lt;K,V&gt;[] resize() {
+        Node&lt;K,V&gt;[] oldTab = table;
+        //如果当前数组为null的时候，把oldCap老数组容量设置为0
+        int oldCap = (oldTab == null) ? 0 : oldTab.length;
+        //老的扩容阈值
+        int oldThr = threshold;
+        int newCap, newThr = 0;
+        //判断数组容量是否大于0，大于0说明数组已经初始化
+        if (oldCap &gt; 0) {
+            //判断当前数组长度是否大于最大数组长度
+            if (oldCap &gt;= MAXIMUM_CAPACITY) {
+                //如果是，将扩容阈值直接设置为int类型的最大数值并直接返回
+                threshold = Integer.MAX_VALUE;
+                return oldTab;
+            }
+            //如果在最大长度范围内，则需要扩容  OldCap &lt;&lt; 1等价于oldCap*2
+            //运算过后判断是不是最大值并且oldCap需要大于16
+            else if ((newCap = oldCap &lt;&lt; 1) &lt; MAXIMUM_CAPACITY &amp;&amp;
+                     oldCap &gt;= DEFAULT_INITIAL_CAPACITY)
+                newThr = oldThr &lt;&lt; 1; // double threshold  等价于oldThr*2
+        }
+        //如果oldCap&lt;0，但是已经初始化了，像把元素删除完之后的情况，那么它的临界值肯定还存在，                如果是首次初始化，它的临界值则为0
+        else if (oldThr &gt; 0) // initial capacity was placed in threshold
+            newCap = oldThr;
+        //数组未初始化的情况，将阈值和扩容因子都设置为默认值
+        else {               // zero initial threshold signifies using defaults
+            newCap = DEFAULT_INITIAL_CAPACITY;
+            newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
+        }
+        //初始化容量小于16的时候，扩容阈值是没有赋值的
+        if (newThr == 0) {
+            //创建阈值
+            float ft = (float)newCap * loadFactor;
+            //判断新容量和新阈值是否大于最大容量
+            newThr = (newCap &lt; MAXIMUM_CAPACITY &amp;&amp; ft &lt; (float)MAXIMUM_CAPACITY ?
+                      (int)ft : Integer.MAX_VALUE);
+        }
+        //计算出来的阈值赋值
+        threshold = newThr;
+        @SuppressWarnings({&quot;rawtypes&quot;,&quot;unchecked&quot;})
+        //根据上边计算得出的容量 创建新的数组       
+        Node&lt;K,V&gt;[] newTab = (Node&lt;K,V&gt;[])new Node[newCap];
+        //赋值
+        table = newTab;
+        //扩容操作，判断不为空证明不是初始化数组
+        if (oldTab != null) {
+            //遍历数组
+            for (int j = 0; j &lt; oldCap; ++j) {
+                Node&lt;K,V&gt; e;
+                //判断当前下标为j的数组如果不为空的话赋值个e，进行下一步操作
+                if ((e = oldTab[j]) != null) {
+                    //将数组位置置空
+                    oldTab[j] = null;
+                    //判断是否有下个节点
+                    if (e.next == null)
+                        //如果没有，就重新计算在新数组中的下标并放进去
+                        newTab[e.hash &amp; (newCap - 1)] = e;
+                    //有下个节点的情况，并且判断是否已经树化
+                    else if (e instanceof TreeNode)
+                        //进行红黑树的操作
+                        ((TreeNode&lt;K,V&gt;)e).split(this, newTab, j, oldCap);
+                    //有下个节点的情况，并且没有树化（链表形式）
+                    else {
+                        //比如老数组容量是16，那下标就为0-15
+                        //扩容操作*2，容量就变为32，下标为0-31
+                        //低位：0-15，高位16-31
+                        //定义了四个变量
+                        //        低位头          低位尾
+                        Node&lt;K,V&gt; loHead = null, loTail = null;
+                        //        高位头          高位尾
+                        Node&lt;K,V&gt; hiHead = null, hiTail = null;
+                        //下个节点
+                        Node&lt;K,V&gt; next;
+                        //循环遍历
+                        do {
+                            //取出next节点
+                            next = e.next;
+                            //通过 与操作 计算得出结果为0
+                            if ((e.hash &amp; oldCap) == 0) {
+                                //如果低位尾为null，证明当前数组位置为空，没有任何数据
+                                if (loTail == null)
+                                    //将e值放入低位头
+                                    loHead = e;
+                                //低位尾不为null，证明已经有数据了
+                                else
+                                    //将数据放入next节点
+                                    loTail.next = e;
+                                //记录低位尾数据
+                                loTail = e;
+                            }
+                            //通过 与操作 计算得出结果不为0
+                            else {
+                                 //如果高位尾为null，证明当前数组位置为空，没有任何数据
+                                if (hiTail == null)
+                                    //将e值放入高位头
+                                    hiHead = e;
+                                //高位尾不为null，证明已经有数据了
+                                else
+                                    //将数据放入next节点
+                                    hiTail.next = e;
+                               //记录高位尾数据
+                                hiTail = e;
+                            }
+
+                        } 
+                        //如果e不为空，证明没有到链表尾部，继续执行循环
+                        while ((e = next) != null);
+                        //低位尾如果记录的有数据，是链表
+                        if (loTail != null) {
+                            //将下一个元素置空
+                            loTail.next = null;
+                            //将低位头放入新数组的原下标位置
+                            newTab[j] = loHead;
+                        }
+                        //高位尾如果记录的有数据，是链表
+                        if (hiTail != null) {
+                            //将下一个元素置空
+                            hiTail.next = null;
+                            //将高位头放入新数组的(原下标+原数组容量)位置
+                            newTab[j + oldCap] = hiHead;
+                        }
+                    }
+                }
+            }
+        }
+        //返回新的数组对象
+        return newTab;
+    }
+</code></pre>
+<h3 id="3-get">3 get方法</h3>
+<pre><code class="language-java">public V get(Object key) {
+    Node&lt;K,V&gt; e;
+    //hash(key)，获取key的hash值
+    //调用getNode方法，见下面方法
+    return (e = getNode(hash(key), key)) == null ? null : e.value;
+}
+
+
+final Node&lt;K,V&gt; getNode(int hash, Object key) {
+    Node&lt;K,V&gt;[] tab; Node&lt;K,V&gt; first, e; int n; K k;
+    //找到key对应的桶下标，赋值给first节点
+    if ((tab = table) != null &amp;&amp; (n = tab.length) &gt; 0 &amp;&amp;
+        (first = tab[(n - 1) &amp; hash]) != null) {
+        //判断hash值和key是否相等，如果是，则直接返回，桶中只有一个数据（大部分的情况）
+        if (first.hash == hash &amp;&amp; // always check first node
+            ((k = first.key) == key || (key != null &amp;&amp; key.equals(k))))
+            return first;
+
+        if ((e = first.next) != null) {
+            //该节点是红黑树，则需要通过红黑树查找数据
+            if (first instanceof TreeNode)
+                return ((TreeNode&lt;K,V&gt;)first).getTreeNode(hash, key);
+
+            //链表的情况，则需要遍历链表查找数据
+            do {
+                if (e.hash == hash &amp;&amp;
+                    ((k = e.key) == key || (key != null &amp;&amp; key.equals(k))))
+                    return e;
+            } while ((e = e.next) != null);
+        }
+    }
+    return null;
+}
+</code></pre></div>
+            </div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script src="../../../js/jquery-3.6.0.min.js"></script>
+        <script src="../../../js/bootstrap.min.js"></script>
+        <script>
+            var base_url = "../../..",
+                shortcuts = {"help": 191, "next": 78, "previous": 80, "search": 83};
+        </script>
+        <script src="../../../js/base.js"></script>
+        <script src="../../../search/main.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="searchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="searchModalLabel">Search</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <p>From here you can search these documents. Enter your search terms below.</p>
+                <form>
+                    <div class="form-group">
+                        <input type="search" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results" data-no-results-text="No results found"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="keyboardModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="keyboardModalLabel">Keyboard Shortcuts</h4>
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="help shortcut"><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td class="next shortcut"><kbd>n</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+    </body>
+</html>
